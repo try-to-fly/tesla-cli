@@ -8,7 +8,7 @@ export interface BatteryOptions {
 }
 
 export async function batteryCommand(carId: string, options: BatteryOptions): Promise<void> {
-  const client = getGrafanaClient();
+  const client = await getGrafanaClient();
   const batteryService = new BatteryService(client);
 
   const id = parseInt(carId, 10);

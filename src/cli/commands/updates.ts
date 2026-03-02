@@ -12,7 +12,7 @@ export interface UpdatesOptions {
 }
 
 export async function updatesCommand(carId: string, options: UpdatesOptions): Promise<void> {
-  const client = getGrafanaClient();
+  const client = await getGrafanaClient();
   const updateService = new UpdateService(client);
 
   const id = parseInt(carId, 10);

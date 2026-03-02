@@ -12,7 +12,7 @@ export interface VampireOptions {
 }
 
 export async function vampireCommand(carId: string, options: VampireOptions): Promise<void> {
-  const client = getGrafanaClient();
+  const client = await getGrafanaClient();
   const vampireService = new VampireService(client);
 
   const id = parseInt(carId, 10);

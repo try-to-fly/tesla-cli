@@ -9,7 +9,7 @@ export interface EfficiencyOptions {
 }
 
 export async function efficiencyCommand(carId: string, options: EfficiencyOptions): Promise<void> {
-  const client = getGrafanaClient();
+  const client = await getGrafanaClient();
   const efficiencyService = new EfficiencyService(client);
 
   const id = parseInt(carId, 10);

@@ -14,7 +14,7 @@ export async function chargingStatsCommand(
   carId: string,
   options: ChargingStatsOptions
 ): Promise<void> {
-  const client = getGrafanaClient();
+  const client = await getGrafanaClient();
   const statsService = new StatsService(client);
 
   const id = parseInt(carId, 10);

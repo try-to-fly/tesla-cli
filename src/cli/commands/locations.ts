@@ -11,7 +11,7 @@ export interface LocationsOptions {
 }
 
 export async function locationsCommand(carId: string, options: LocationsOptions): Promise<void> {
-  const client = getGrafanaClient();
+  const client = await getGrafanaClient();
   const locationService = new LocationService(client);
 
   const id = parseInt(carId, 10);

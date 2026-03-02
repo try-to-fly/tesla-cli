@@ -12,7 +12,7 @@ export interface TimelineOptions {
 }
 
 export async function timelineCommand(carId: string, options: TimelineOptions): Promise<void> {
-  const client = getGrafanaClient();
+  const client = await getGrafanaClient();
   const timelineService = new TimelineService(client);
 
   const id = parseInt(carId, 10);

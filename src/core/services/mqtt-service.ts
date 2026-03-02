@@ -242,7 +242,7 @@ export class MqttService {
     setTimeout(async () => {
       try {
         const carId = this.options.carId;
-        const client = getGrafanaClient();
+        const client = await getGrafanaClient();
 
         // Use the last drive's last point as the park center.
         const { DriveService } = await import('./drive-service.js');

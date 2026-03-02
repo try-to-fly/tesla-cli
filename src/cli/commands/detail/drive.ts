@@ -12,7 +12,7 @@ export async function driveDetailCommand(
   driveId: string,
   options: DriveDetailOptions
 ): Promise<void> {
-  const client = getGrafanaClient();
+  const client = await getGrafanaClient();
   const driveService = new DriveService(client);
 
   const id = parseInt(driveId, 10);

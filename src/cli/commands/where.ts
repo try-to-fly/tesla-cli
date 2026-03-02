@@ -15,7 +15,7 @@ export async function whereCommand(carId: string, options: WhereOptions): Promis
     process.exit(1);
   }
 
-  const client = getGrafanaClient();
+  const client = await getGrafanaClient();
   const service = new PositionService(client);
   const latest = await service.getLatestPosition(id);
 

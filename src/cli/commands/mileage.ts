@@ -10,7 +10,7 @@ export interface MileageOptions {
 }
 
 export async function mileageCommand(carId: string, options: MileageOptions): Promise<void> {
-  const client = getGrafanaClient();
+  const client = await getGrafanaClient();
   const mileageService = new MileageService(client);
 
   const id = parseInt(carId, 10);

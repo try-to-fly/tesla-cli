@@ -12,7 +12,7 @@ export interface StatesOptions {
 }
 
 export async function statesCommand(carId: string, options: StatesOptions): Promise<void> {
-  const client = getGrafanaClient();
+  const client = await getGrafanaClient();
   const stateService = new StateService(client);
 
   const id = parseInt(carId, 10);

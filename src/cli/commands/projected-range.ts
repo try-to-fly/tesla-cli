@@ -14,7 +14,7 @@ export async function projectedRangeCommand(
   carId: string,
   options: ProjectedRangeOptions
 ): Promise<void> {
-  const client = getGrafanaClient();
+  const client = await getGrafanaClient();
   const projectedRangeService = new ProjectedRangeService(client);
 
   const id = parseInt(carId, 10);

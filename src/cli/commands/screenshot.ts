@@ -373,7 +373,7 @@ async function sendFailureNotification(
 
 
 async function getDriveData(carId: number, driveId: number): Promise<DriveData> {
-  const client = getGrafanaClient();
+  const client = await getGrafanaClient();
   const driveService = new DriveService(client);
 
   const drives = await driveService.getDrives(carId, { limit: 100 });
@@ -389,7 +389,7 @@ async function getDriveData(carId: number, driveId: number): Promise<DriveData> 
 }
 
 async function getChargeData(carId: number, chargeId: number): Promise<ChargeData> {
-  const client = getGrafanaClient();
+  const client = await getGrafanaClient();
   const chargeService = new ChargeService(client);
 
   const charges = await chargeService.getCharges(carId, { limit: 100 });
@@ -405,7 +405,7 @@ async function getChargeData(carId: number, chargeId: number): Promise<ChargeDat
 }
 
 async function getDailyData(carId: number, dateStr: string): Promise<DailyData> {
-  const client = getGrafanaClient();
+  const client = await getGrafanaClient();
   const driveService = new DriveService(client);
   const chargeService = new ChargeService(client);
   const tpmsService = new TPMSService(client);
@@ -460,7 +460,7 @@ async function getDailyData(carId: number, dateStr: string): Promise<DailyData> 
 }
 
 async function getWeeklyData(carId: number, dateStr?: string): Promise<WeeklyData> {
-  const client = getGrafanaClient();
+  const client = await getGrafanaClient();
   const driveService = new DriveService(client);
   const chargeService = new ChargeService(client);
   const statsService = new StatsService(client);
@@ -499,7 +499,7 @@ async function getWeeklyData(carId: number, dateStr?: string): Promise<WeeklyDat
 }
 
 async function getMonthlyData(carId: number, dateStr?: string): Promise<MonthlyData> {
-  const client = getGrafanaClient();
+  const client = await getGrafanaClient();
   const driveService = new DriveService(client);
   const chargeService = new ChargeService(client);
   const statsService = new StatsService(client);
@@ -538,7 +538,7 @@ async function getMonthlyData(carId: number, dateStr?: string): Promise<MonthlyD
 }
 
 async function getYearlyData(carId: number, yearStr?: string): Promise<YearlyData> {
-  const client = getGrafanaClient();
+  const client = await getGrafanaClient();
   const statsService = new StatsService(client);
 
   const year = yearStr ? parseInt(yearStr, 10) : new Date().getFullYear();
@@ -583,7 +583,7 @@ async function screenshotDrive(
     if (id) {
       driveId = parseInt(id, 10);
     } else {
-      const client = getGrafanaClient();
+      const client = await getGrafanaClient();
       const driveService = new DriveService(client);
       const drives = await driveService.getDrives(carId, { limit: 1 });
       if (drives.length === 0) {
@@ -645,7 +645,7 @@ async function screenshotCharge(
     if (id) {
       chargeId = parseInt(id, 10);
     } else {
-      const client = getGrafanaClient();
+      const client = await getGrafanaClient();
       const chargeService = new ChargeService(client);
       const charges = await chargeService.getCharges(carId, { limit: 1 });
       if (charges.length === 0) {

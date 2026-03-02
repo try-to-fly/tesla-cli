@@ -11,7 +11,7 @@ export interface TPMSOptions {
 }
 
 export async function tpmsCommand(carId: string, options: TPMSOptions): Promise<void> {
-  const client = getGrafanaClient();
+  const client = await getGrafanaClient();
   const tpmsService = new TPMSService(client);
 
   const id = parseInt(carId, 10);

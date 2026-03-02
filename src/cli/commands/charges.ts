@@ -9,7 +9,7 @@ export interface ChargesOptions {
 }
 
 export async function chargesCommand(carId: string, options: ChargesOptions): Promise<void> {
-  const client = getGrafanaClient();
+  const client = await getGrafanaClient();
   const chargeService = new ChargeService(client);
 
   const id = parseInt(carId, 10);

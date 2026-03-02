@@ -9,7 +9,7 @@ export interface DrivesOptions {
 }
 
 export async function drivesCommand(carId: string, options: DrivesOptions): Promise<void> {
-  const client = getGrafanaClient();
+  const client = await getGrafanaClient();
   const driveService = new DriveService(client);
 
   const id = parseInt(carId, 10);

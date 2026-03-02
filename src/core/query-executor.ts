@@ -32,7 +32,7 @@ export interface QueryResult {
  * 执行查询协议
  */
 export async function executeQuery(query: TeslaQuery): Promise<QueryResult> {
-  const client = getGrafanaClient();
+  const client = await getGrafanaClient();
   const { from, to } = resolveTimeRange(query.timeRange);
   const carId = query.carId ?? 1;
   const limit = query.pagination?.limit ?? 50;

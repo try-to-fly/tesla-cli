@@ -6,7 +6,7 @@ export interface CarOptions {
 }
 
 export async function carCommand(carId: string, options: CarOptions): Promise<void> {
-  const client = getGrafanaClient();
+  const client = await getGrafanaClient();
   const carService = new CarService(client);
 
   const id = parseInt(carId, 10);

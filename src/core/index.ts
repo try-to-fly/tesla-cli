@@ -37,17 +37,14 @@ export function configureGrafanaClient(cfg: GrafanaClientConfig): void {
 /**
  * 获取 GrafanaClient 单例
  */
-export function getGrafanaClient(): GrafanaClient {
+export async function getGrafanaClient(): Promise<GrafanaClient> {
   if (!clientInstance) {
     if (clientConfig) {
       // 使用外部配置（插件模式）
       clientInstance = new GrafanaClient(clientConfig);
     } else {
-      // CLI 模式：使用本地 configstore 配置
-      // Note: keep this synchronous because most callers are sync-typed.
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      // @ts-ignore
-      const { config } = require('../config/index.js');
+      // CLI 模式：使用本地 configstore 配置（ESM-safe）
+      const { config } = await import('../config/index.js');
       clientInstance = new GrafanaClient({
         baseUrl: config.grafana.url,
         token: config.grafana.token,

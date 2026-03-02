@@ -14,7 +14,7 @@ export async function periodStatsCommand(
   carId: string,
   options: PeriodStatsOptions
 ): Promise<void> {
-  const client = getGrafanaClient();
+  const client = await getGrafanaClient();
   const statsService = new StatsService(client);
 
   const id = parseInt(carId, 10);

@@ -12,7 +12,7 @@ export async function chargeDetailCommand(
   chargeId: string,
   options: ChargeDetailOptions
 ): Promise<void> {
-  const client = getGrafanaClient();
+  const client = await getGrafanaClient();
   const chargeService = new ChargeService(client);
 
   const id = parseInt(chargeId, 10);
