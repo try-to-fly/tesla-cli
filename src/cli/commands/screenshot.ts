@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as http from 'node:http';
 import { exec } from 'node:child_process';
+import * as os from 'node:os';
 import { promisify } from 'node:util';
 import handler from 'serve-handler';
 import { getGrafanaClient, DriveService, ChargeService, StatsService, TPMSService, getMessageService } from '../../core/index.js';
@@ -240,6 +241,23 @@ async function takeScreenshot(
     console.log('等待内容渲染...');
     await page.waitForSelector('#root > div', { timeout: 10000 });
 
+    // Debug: verify injected data vs rendered list count.
+    // This helps catch UI truncation/overflow issues where not all drives appear.
+    try {
+      const injectedCount = await page.evaluate(() => (window as any).__TESLA_DATA__?.drives?.length ?? null);
+      const renderedCount = await page.evaluate(() => {
+        const header = Array.from(document.querySelectorAll('span')).find((el) =>
+          (el.textContent || '').includes('行程 (')
+        );
+        if (!header) return null;
+        const m = (header.textContent || '').match(/\((\d+)\)/);
+        return m ? parseInt(m[1], 10) : null;
+      });
+      console.log(`[debug] injected drives=${injectedCount}, rendered drives=${renderedCount}`);
+    } catch (e) {
+      console.log('[debug] failed to inspect drive counts:', e instanceof Error ? e.message : String(e));
+    }
+
     // 等待地图加载完成（如果页面有地图）
     console.log('等待地图加载...');
     try {
@@ -294,7 +312,7 @@ async function sendAndCleanup(
   const target = options.target || config.openclaw.target;
   const message = options.message || defaultMessage;
 
-  console.log(`正在发送截图到 Telegram...`);
+  console.log(`正在发送截图...`);
 
   try {
     const messageService = getMessageService();
@@ -392,11 +410,13 @@ async function getDailyData(carId: number, dateStr: string): Promise<DailyData> 
   const chargeService = new ChargeService(client);
   const tpmsService = new TPMSService(client);
 
-  const date = new Date(dateStr);
-  const startOfDay = new Date(date);
-  startOfDay.setUTCHours(0, 0, 0, 0);
-  const endOfDay = new Date(date);
-  endOfDay.setUTCHours(23, 59, 59, 999);
+  // Interpret dateStr (YYYY-MM-DD) as a local calendar day.
+  // IMPORTANT: `new Date('YYYY-MM-DD')` is parsed as UTC midnight by JS,
+  // which becomes 08:00 local time in Asia/Shanghai. Build the local day
+  // boundaries explicitly to avoid missing early-morning drives.
+  const [y, m, d] = dateStr.split('-').map((n) => parseInt(n, 10));
+  const startOfDay = new Date(y, m - 1, d, 0, 0, 0, 0);
+  const endOfDay = new Date(y, m - 1, d, 23, 59, 59, 999);
 
   const from = startOfDay.toISOString();
   const to = endOfDay.toISOString();
@@ -574,7 +594,9 @@ async function screenshotDrive(
     data = await getDriveData(carId, driveId);
   }
 
-  const outputPath = options.output || `drive-${driveId}.png`;
+  // Default output to system temp dir so OpenClaw can attach it safely.
+  // (OpenClaw media allowlist includes os.tmpdir().)
+  const outputPath = options.output || path.join(os.tmpdir(), `drive-${driveId}.png`);
 
   // 发送预通知
   await sendPreNotification('行程', driveId, options);
@@ -634,7 +656,9 @@ async function screenshotCharge(
     data = await getChargeData(carId, chargeId);
   }
 
-  const outputPath = options.output || `charge-${chargeId}.png`;
+  // Default output to system temp dir so OpenClaw can attach it safely.
+  // (OpenClaw media allowlist includes os.tmpdir().)
+  const outputPath = options.output || path.join(os.tmpdir(), `charge-${chargeId}.png`);
 
   // 发送预通知
   await sendPreNotification('充电', chargeId, options);
@@ -680,11 +704,13 @@ async function screenshotDaily(
     date = data.date;
   } else {
     const carId = parseInt(options.carId || '1', 10);
-    date = dateStr || new Date().toISOString().split('T')[0];
+    // Default to local calendar date; ISO date would be UTC and can shift the day in UTC+8.
+    date = dateStr || new Date().toLocaleDateString('en-CA');
     data = await getDailyData(carId, date);
   }
 
-  const outputPath = options.output || `daily-${date}.png`;
+  // Default output to system temp dir so OpenClaw can attach it safely.
+  const outputPath = options.output || path.join(os.tmpdir(), `daily-${date}.png`);
 
   // 发送预通知
   await sendPreNotification('日报', date, options);
@@ -725,7 +751,8 @@ async function screenshotWeekly(
   console.log('正在获取周报数据...');
   const data = await getWeeklyData(carId, dateStr);
 
-  const outputPath = options.output || `weekly-${data.period}.png`;
+  // Default output to system temp dir so OpenClaw can attach it safely.
+  const outputPath = options.output || path.join(os.tmpdir(), `weekly-${data.period}.png`);
 
   // 发送预通知
   await sendPreNotification('周报', data.periodLabel, options);
@@ -766,7 +793,8 @@ async function screenshotMonthly(
   console.log('正在获取月报数据...');
   const data = await getMonthlyData(carId, dateStr);
 
-  const outputPath = options.output || `monthly-${data.period}.png`;
+  // Default output to system temp dir so OpenClaw can attach it safely.
+  const outputPath = options.output || path.join(os.tmpdir(), `monthly-${data.period}.png`);
 
   // 发送预通知
   await sendPreNotification('月报', data.periodLabel, options);
@@ -806,7 +834,8 @@ async function screenshotYearly(
 
   const data = await getYearlyData(carId, yearStr);
 
-  const outputPath = options.output || `yearly-${data.year}.png`;
+  // Default output to system temp dir so OpenClaw can attach it safely.
+  const outputPath = options.output || path.join(os.tmpdir(), `yearly-${data.year}.png`);
 
   // 发送预通知
   await sendPreNotification('年报', data.periodLabel, options);
@@ -947,7 +976,7 @@ async function fetchDataForScreenshot(
     }
 
     case 'daily': {
-      const date = query.screenshot?.date || new Date().toISOString().split('T')[0];
+      const date = query.screenshot?.date || new Date().toLocaleDateString('en-CA');
       return getDailyData(carId, date);
     }
 
@@ -1091,8 +1120,8 @@ export const screenshotCommand = new Command('screenshot')
       .option('-w, --width <number>', 'Viewport width', String(SCREENSHOT.DEFAULT_WIDTH))
       .option('--scale <number>', 'Device pixel ratio', String(SCREENSHOT.DEFAULT_SCALE))
       .option('-c, --car-id <number>', 'Car ID', '1')
-      .option('-s, --send', '发送到 Telegram 后删除文件')
-      .option('-t, --target <id>', '消息目标 ID (默认: OPENCLAW_TARGET)')
+      .option('-s, --send', '发送消息后删除文件')
+      .option('-t, --target <id>', '消息目标 ID (默认: openclaw.target)')
       .option('-m, --message <text>', '自定义消息')
       .option('--theme <name>', '主题风格 (tesla/cyberpunk/glass)', 'tesla')
       .option('--mock', '使用 Mock 数据（无需连接 Grafana）')
@@ -1106,8 +1135,8 @@ export const screenshotCommand = new Command('screenshot')
       .option('-w, --width <number>', 'Viewport width', String(SCREENSHOT.DEFAULT_WIDTH))
       .option('--scale <number>', 'Device pixel ratio', String(SCREENSHOT.DEFAULT_SCALE))
       .option('-c, --car-id <number>', 'Car ID', '1')
-      .option('-s, --send', '发送到 Telegram 后删除文件')
-      .option('-t, --target <id>', '消息目标 ID (默认: OPENCLAW_TARGET)')
+      .option('-s, --send', '发送消息后删除文件')
+      .option('-t, --target <id>', '消息目标 ID (默认: openclaw.target)')
       .option('-m, --message <text>', '自定义消息')
       .option('--theme <name>', '主题风格 (tesla/cyberpunk/glass)', 'tesla')
       .option('--mock', '使用 Mock 数据（无需连接 Grafana）')
@@ -1121,8 +1150,8 @@ export const screenshotCommand = new Command('screenshot')
       .option('-w, --width <number>', 'Viewport width', String(SCREENSHOT.DEFAULT_WIDTH))
       .option('--scale <number>', 'Device pixel ratio', String(SCREENSHOT.DEFAULT_SCALE))
       .option('-c, --car-id <number>', 'Car ID', '1')
-      .option('-s, --send', '发送到 Telegram 后删除文件')
-      .option('-t, --target <id>', '消息目标 ID (默认: OPENCLAW_TARGET)')
+      .option('-s, --send', '发送消息后删除文件')
+      .option('-t, --target <id>', '消息目标 ID (默认: openclaw.target)')
       .option('-m, --message <text>', '自定义消息')
       .option('--theme <name>', '主题风格 (tesla/cyberpunk/glass)', 'tesla')
       .option('--mock', '使用 Mock 数据（无需连接 Grafana）')
@@ -1136,8 +1165,8 @@ export const screenshotCommand = new Command('screenshot')
       .option('-w, --width <number>', 'Viewport width', String(SCREENSHOT.DEFAULT_WIDTH))
       .option('--scale <number>', 'Device pixel ratio', String(SCREENSHOT.DEFAULT_SCALE))
       .option('-c, --car-id <number>', 'Car ID', '1')
-      .option('-s, --send', '发送到 Telegram 后删除文件')
-      .option('-t, --target <id>', '消息目标 ID (默认: OPENCLAW_TARGET)')
+      .option('-s, --send', '发送消息后删除文件')
+      .option('-t, --target <id>', '消息目标 ID (默认: openclaw.target)')
       .option('-m, --message <text>', '自定义消息')
       .option('--theme <name>', '主题风格 (tesla/cyberpunk/glass)', 'tesla')
       .action(screenshotWeekly)
@@ -1150,8 +1179,8 @@ export const screenshotCommand = new Command('screenshot')
       .option('-w, --width <number>', 'Viewport width', String(SCREENSHOT.DEFAULT_WIDTH))
       .option('--scale <number>', 'Device pixel ratio', String(SCREENSHOT.DEFAULT_SCALE))
       .option('-c, --car-id <number>', 'Car ID', '1')
-      .option('-s, --send', '发送到 Telegram 后删除文件')
-      .option('-t, --target <id>', '消息目标 ID (默认: OPENCLAW_TARGET)')
+      .option('-s, --send', '发送消息后删除文件')
+      .option('-t, --target <id>', '消息目标 ID (默认: openclaw.target)')
       .option('-m, --message <text>', '自定义消息')
       .option('--theme <name>', '主题风格 (tesla/cyberpunk/glass)', 'tesla')
       .action(screenshotMonthly)
@@ -1164,8 +1193,8 @@ export const screenshotCommand = new Command('screenshot')
       .option('-w, --width <number>', 'Viewport width', String(SCREENSHOT.DEFAULT_WIDTH))
       .option('--scale <number>', 'Device pixel ratio', String(SCREENSHOT.DEFAULT_SCALE))
       .option('-c, --car-id <number>', 'Car ID', '1')
-      .option('-s, --send', '发送到 Telegram 后删除文件')
-      .option('-t, --target <id>', '消息目标 ID (默认: OPENCLAW_TARGET)')
+      .option('-s, --send', '发送消息后删除文件')
+      .option('-t, --target <id>', '消息目标 ID (默认: openclaw.target)')
       .option('-m, --message <text>', '自定义消息')
       .option('--theme <name>', '主题风格 (tesla/cyberpunk/glass)', 'tesla')
       .action(screenshotYearly)
@@ -1178,8 +1207,8 @@ export const screenshotCommand = new Command('screenshot')
       .option('-w, --width <number>', 'Viewport width', String(SCREENSHOT.DEFAULT_WIDTH))
       .option('--scale <number>', 'Device pixel ratio', String(SCREENSHOT.DEFAULT_SCALE))
       .option('-c, --car-id <number>', 'Car ID')
-      .option('-s, --send', '发送到 Telegram 后删除文件')
-      .option('-t, --target <id>', '消息目标 ID (默认: OPENCLAW_TARGET)')
+      .option('-s, --send', '发送消息后删除文件')
+      .option('-t, --target <id>', '消息目标 ID (默认: openclaw.target)')
       .option('-m, --message <text>', '自定义消息')
       .option('--theme <name>', '主题风格 (tesla/cyberpunk/glass)', 'tesla')
       .action(screenshotQuery)

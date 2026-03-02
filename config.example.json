@@ -1,0 +1,17 @@
+{
+  "grafana": {
+    "url": "https://grafana.example.com",
+    "token": "REDACTED"
+  },
+  "openclaw": {
+    "channel": "discord",
+    "target": "DISCORD_CHANNEL_ID",
+    "account": "default"
+  },
+  "mqtt": {
+    "host": "192.168.31.56",
+    "port": 1883,
+    "carId": 1,
+    "topicPrefix": "teslamate"
+  }
+}

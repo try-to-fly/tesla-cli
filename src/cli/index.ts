@@ -20,6 +20,8 @@ import { mqttCommand } from './commands/mqtt.js';
 import { queryCommandDef } from './commands/query.js';
 import { tpmsCommand } from './commands/tpms.js';
 import { whereCommand } from './commands/where.js';
+import { notifyCommand } from './commands/notify.js';
+import { configCommand } from './commands/config.js';
 
 const program = new Command();
 
@@ -163,5 +165,7 @@ program.addCommand(detailCommand);
 program.addCommand(screenshotCommand);
 program.addCommand(mqttCommand);
 program.addCommand(queryCommandDef);
+program.addCommand(notifyCommand);
+program.addCommand(configCommand);
 
 export { program };

@@ -219,7 +219,7 @@ export class MqttService {
     setTimeout(async () => {
       try {
         console.log('正在执行行程截图...');
-        const { stdout, stderr } = await execAsync('pnpm dev screenshot drive --send');
+        const { stdout, stderr } = await execAsync('pnpm dev screenshot drive --send -o /tmp/openclaw/drive-latest.png');
         if (stdout) console.log(stdout);
         if (stderr) console.error(stderr);
         console.log('行程截图完成');
@@ -304,7 +304,7 @@ export class MqttService {
     setTimeout(async () => {
       try {
         console.log('正在执行充电截图...');
-        const { stdout, stderr } = await execAsync('pnpm dev screenshot charge --send');
+        const { stdout, stderr } = await execAsync('pnpm dev screenshot charge --send -o /tmp/openclaw/charge-latest.png');
         if (stdout) console.log(stdout);
         if (stderr) console.error(stderr);
         console.log('充电截图完成');

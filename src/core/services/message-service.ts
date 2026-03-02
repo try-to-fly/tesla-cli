@@ -32,10 +32,13 @@ function escapeShellArg(arg: string): string {
 export class MessageService {
   private channel: string;
   private defaultTarget: string;
+  private account?: string;
 
   constructor() {
+    // Central config is loaded via configstore (src/config/index.ts).
     this.channel = config.openclaw.channel;
     this.defaultTarget = config.openclaw.target;
+    this.account = config.openclaw.account;
   }
 
   /**
@@ -45,7 +48,8 @@ export class MessageService {
     const target = options?.target || this.defaultTarget;
     const escapedMessage = escapeShellArg(message);
 
-    const command = `${proxyEnvPrefix()}openclaw message send --channel ${this.channel} --target ${target} --message "${escapedMessage}"`;
+    const accountPart = this.account ? ` --account ${this.account}` : '';
+    const command = `${proxyEnvPrefix()}openclaw message send${accountPart} --channel ${this.channel} --target ${target} --message "${escapedMessage}"`;
 
     try {
       await execAsync(command);
@@ -67,7 +71,8 @@ export class MessageService {
     const target = options?.target || this.defaultTarget;
     const escapedMessage = escapeShellArg(message);
 
-    const command = `${proxyEnvPrefix()}openclaw message send --channel ${this.channel} --target ${target} --message "${escapedMessage}" --media "${mediaPath}"`;
+    const accountPart = this.account ? ` --account ${this.account}` : '';
+    const command = `${proxyEnvPrefix()}openclaw message send${accountPart} --channel ${this.channel} --target ${target} --message "${escapedMessage}" --media "${mediaPath}"`;
 
     try {
       await execAsync(command);

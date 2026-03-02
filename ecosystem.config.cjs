@@ -3,8 +3,9 @@ module.exports = {
     {
       name: "tesla-mqtt",
       script: "pnpm",
-      args: "dev mqtt listen",
-      cwd: process.cwd(),
+      args: "dev mqtt listen --car-id 1",
+      // Pin cwd so pnpm/tsx always runs in the repo with package.json.
+      cwd: "/Users/fox/Documents/fly/tesla-service",
       autorestart: true,
       max_restarts: 10,
       restart_delay: 5000,

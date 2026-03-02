@@ -1,32 +1,44 @@
-import { env } from "node:process";
+import { loadStoredConfig } from './store.js';
 
-function requireEnv(key: string): string {
-  const value = env[key];
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${key}`);
+function requireCfg(v: unknown, keyPath: string): string {
+  if (typeof v !== 'string' || !v.trim()) {
+    throw new Error(`Missing required config: ${keyPath} (run: tesla config init)`);
   }
-  return value;
+  return v;
 }
 
-function optionalEnv(key: string, defaultValue: string): string {
-  return env[key] || defaultValue;
+function optionalString(v: unknown, defaultValue: string): string {
+  return typeof v === 'string' && v.trim() ? v : defaultValue;
 }
 
-export const config = {
-  grafana: {
-    url: requireEnv("GRAFANA_URL"),
-    token: requireEnv("GRAFANA_TOKEN"),
-  },
-  openclaw: {
-    channel: requireEnv("OPENCLAW_CHANNEL"),
-    target: requireEnv("OPENCLAW_TARGET"),
-  },
-  mqtt: {
-    host: optionalEnv("MQTT_HOST", "localhost"),
-    port: parseInt(optionalEnv("MQTT_PORT", "1883"), 10),
-    carId: parseInt(optionalEnv("MQTT_CAR_ID", "1"), 10),
-    topicPrefix: optionalEnv("MQTT_TOPIC_PREFIX", "teslamate"),
-  },
-} as const;
+function optionalNumber(v: unknown, defaultValue: number): number {
+  return typeof v === 'number' && Number.isFinite(v) ? v : defaultValue;
+}
+
+export const config = (() => {
+  const stored = loadStoredConfig();
+
+  const mqtt = stored.mqtt || {};
+  const grafana = stored.grafana || {};
+  const openclaw = stored.openclaw || {};
+
+  return {
+    grafana: {
+      url: requireCfg(grafana.url, 'grafana.url'),
+      token: requireCfg(grafana.token, 'grafana.token'),
+    },
+    openclaw: {
+      channel: requireCfg(openclaw.channel, 'openclaw.channel'),
+      target: requireCfg(openclaw.target, 'openclaw.target'),
+      account: typeof openclaw.account === 'string' ? openclaw.account : undefined,
+    },
+    mqtt: {
+      host: optionalString(mqtt.host, 'localhost'),
+      port: optionalNumber(mqtt.port, 1883),
+      carId: optionalNumber(mqtt.carId, 1),
+      topicPrefix: optionalString(mqtt.topicPrefix, 'teslamate'),
+    },
+  } as const;
+})();
 
 export type Config = typeof config;
