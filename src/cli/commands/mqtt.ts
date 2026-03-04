@@ -57,6 +57,13 @@ interface TestOptions {
   range?: string;
   battery?: string;
   version?: string;
+
+  // nav simulation
+  destination?: string;
+  minutes?: string;
+  miles?: string;
+  lat?: string;
+  lng?: string;
 }
 
 interface TestContext {
@@ -284,6 +291,51 @@ async function pubCustom(topic: string, message: string, options: TestOptions): 
   }
 }
 
+function toNumberOrUndefined(v: string | undefined): number | undefined {
+  if (typeof v !== 'string' || !v.trim()) return undefined;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+async function nav(options: TestOptions): Promise<void> {
+  const ctx = await getTestContext(options);
+
+  const destination = options.destination || '国科大杭州高等研究院';
+  const minutes = toNumberOrUndefined(options.minutes) ?? 12;
+  const miles = toNumberOrUndefined(options.miles) ?? 3.1;
+  const lat = toNumberOrUndefined(options.lat) ?? 30.23855;
+  const lng = toNumberOrUndefined(options.lng) ?? 120.16291;
+
+  const payload = {
+    error: null,
+    location: { latitude: lat, longitude: lng },
+    destination,
+    miles_to_arrival: miles,
+    minutes_to_arrival: minutes,
+  };
+
+  try {
+    await publish(ctx, 'active_route', JSON.stringify(payload));
+  } finally {
+    ctx.client.end();
+  }
+}
+
+async function navCycle(options: TestOptions): Promise<void> {
+  const destination = options.destination || '国科大杭州高等研究院';
+  const delay = options.delay ? parseInt(options.delay, 10) : 1500;
+
+  // A simple countdown that should hit thresholds and then arrival.
+  const seq = [20, 15, 14, 10, 9, 5, 4, 1, 0];
+  for (const m of seq) {
+    await nav({ ...options, destination, minutes: String(m) });
+    await sleep(delay);
+  }
+
+  // End route (inactive) to exercise "route ended" arrival handling.
+  await pubCustom('active_route', JSON.stringify({ error: null }), options);
+}
+
 const testSubcommand = new Command('test')
   .description('MQTT 测试命令，模拟各种车辆状态');
 
@@ -367,6 +419,27 @@ testSubcommand
   .option('-c, --car-id <id>', '车辆 ID')
   .option('--prefix <prefix>', 'Topic 前缀')
   .action((topic, message, opts) => pubCustom(topic, message, opts));
+
+testSubcommand
+  .command('nav')
+  .description('模拟导航 active_route（触发导航推送逻辑）')
+  .option('-c, --car-id <id>', '车辆 ID')
+  .option('--prefix <prefix>', 'Topic 前缀')
+  .option('--destination <text>', '目的地（需命中 navAlert.destinationKeywords 才会推送）')
+  .option('--minutes <n>', '剩余分钟（minutes_to_arrival）', '12')
+  .option('--miles <n>', '剩余里程（miles_to_arrival）', '3.1')
+  .option('--lat <n>', '当前位置纬度', '30.23855')
+  .option('--lng <n>', '当前位置经度', '120.16291')
+  .action((opts) => nav(opts));
+
+testSubcommand
+  .command('nav-cycle')
+  .description('模拟一段导航倒计时（依次触发阈值 + 到达 + 结束路线）')
+  .option('-c, --car-id <id>', '车辆 ID')
+  .option('--prefix <prefix>', 'Topic 前缀')
+  .option('--delay <ms>', '步骤间延迟毫秒数', '1500')
+  .option('--destination <text>', '目的地（需命中 navAlert.destinationKeywords 才会推送）')
+  .action((opts) => navCycle(opts));
 
 export const mqttCommand = new Command('mqtt')
   .description('MQTT 相关命令')

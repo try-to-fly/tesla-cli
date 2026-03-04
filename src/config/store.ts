@@ -27,10 +27,16 @@ export type StoredConfig = {
   };
   navAlert?: {
     enabled?: boolean;
-    // Match if destination includes any keyword.
+    // Match if destination equals any keyword (strict match).
     destinationKeywords?: string[];
     // Trigger pushes when remaining minutes crosses one of these thresholds.
     thresholdsMinutes?: number[];
+
+    // Override push routing for navigation alerts only.
+    // If not set, falls back to openclaw.channel/openclaw.target.
+    openclawChannel?: string;
+    openclawTarget?: string;
+    openclawAccount?: string;
   };
 };
 

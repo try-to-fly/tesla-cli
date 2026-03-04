@@ -23,6 +23,11 @@ export const config = (() => {
   const openclaw = stored.openclaw || {};
   const amap = stored.amap || {};
   const navAlert = stored.navAlert || {};
+  const navOpenclaw = {
+    channel: typeof navAlert.openclawChannel === 'string' ? navAlert.openclawChannel.trim() : '',
+    target: typeof navAlert.openclawTarget === 'string' ? navAlert.openclawTarget.trim() : '',
+    account: typeof navAlert.openclawAccount === 'string' ? navAlert.openclawAccount.trim() : '',
+  };
 
   return {
     grafana: {
@@ -48,14 +53,24 @@ export const config = (() => {
     },
     navAlert: {
       enabled: typeof navAlert.enabled === 'boolean' ? navAlert.enabled : false,
-      destinationKeywords: Array.isArray(navAlert.destinationKeywords)
-        ? navAlert.destinationKeywords.filter((v) => typeof v === 'string' && v.trim())
-        : [],
+      destinationKeywords: (() => {
+        const v: unknown = (navAlert as any).destinationKeywords;
+        if (Array.isArray(v)) return v.filter((x) => typeof x === 'string' && x.trim());
+        if (typeof v === 'string' && v.trim()) return [v.trim()];
+        return [];
+      })(),
       thresholdsMinutes: Array.isArray(navAlert.thresholdsMinutes)
         ? navAlert.thresholdsMinutes
             .filter((n) => typeof n === 'number' && Number.isFinite(n))
             .map((n) => Math.max(0, Math.round(n)))
         : [15, 10, 5],
+
+      // Optional override for navigation alert routing.
+      openclaw: {
+        channel: navOpenclaw.channel || undefined,
+        target: navOpenclaw.target || undefined,
+        account: navOpenclaw.account || undefined,
+      },
     },
   } as const;
 })();

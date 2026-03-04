@@ -55,6 +55,8 @@ export class MqttService {
 
   private lastRatedRangeKm: number | null = null;
   private lastUsableBatteryLevel: number | null = null;
+  private lastLatitude: number | null = null;
+  private lastLongitude: number | null = null;
   private persistTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(options: MqttServiceOptions) {
@@ -132,6 +134,9 @@ export class MqttService {
       `${topicPrefix}/cars/${carId}/usable_battery_level`,
       // TeslaMate MQTT: navigation (active route)
       `${topicPrefix}/cars/${carId}/active_route`,
+      // TeslaMate MQTT: real-time location
+      `${topicPrefix}/cars/${carId}/latitude`,
+      `${topicPrefix}/cars/${carId}/longitude`,
     ];
 
     topics.forEach((topic) => {
@@ -154,6 +159,8 @@ export class MqttService {
     const ratedRangeTopic = `${topicPrefix}/cars/${carId}/rated_battery_range_km`;
     const usableBatteryTopic = `${topicPrefix}/cars/${carId}/usable_battery_level`;
     const activeRouteTopic = `${topicPrefix}/cars/${carId}/active_route`;
+    const latitudeTopic = `${topicPrefix}/cars/${carId}/latitude`;
+    const longitudeTopic = `${topicPrefix}/cars/${carId}/longitude`;
 
     if (process.env.MQTT_DEBUG === '1') {
       console.log(`[mqtt] ${topic} = ${message}`);
@@ -171,6 +178,12 @@ export class MqttService {
       this.handleRatedRange(message);
     } else if (topic === usableBatteryTopic) {
       this.handleUsableBatteryLevel(message);
+    } else if (topic === latitudeTopic) {
+      const n = Number(message);
+      if (Number.isFinite(n)) this.lastLatitude = n;
+    } else if (topic === longitudeTopic) {
+      const n = Number(message);
+      if (Number.isFinite(n)) this.lastLongitude = n;
     } else if (topic === activeRouteTopic) {
       this.handleActiveRoute(message);
     }
@@ -376,7 +389,9 @@ export class MqttService {
     if (!config.navAlert.enabled) return false;
     if (!keywords.length) return false;
 
-    return keywords.some((k) => destination.includes(k));
+    // Strict match only (after trim). No fuzzy/substring matching.
+    const dest = destination.trim();
+    return keywords.some((k) => dest === k.trim());
   }
 
   private async handleActiveRoute(message: string): Promise<void> {
@@ -387,18 +402,50 @@ export class MqttService {
     try {
       parsed = JSON.parse(message);
     } catch {
-      if (process.env.MQTT_DEBUG === '1') {
-        console.log('[nav] active_route parse failed');
-      }
+      console.log('[nav] active_route parse failed');
       return;
+    }
+
+    // Always log the raw nav fields (for debugging / observability), but throttle:
+    // only log when minutes_to_arrival changes (rounded to integer).
+    try {
+      const d = typeof parsed?.destination === 'string' ? parsed.destination : null;
+      const m0 = typeof parsed?.minutes_to_arrival === 'number' ? parsed.minutes_to_arrival : null;
+      const mi = typeof parsed?.miles_to_arrival === 'number' ? parsed.miles_to_arrival : null;
+      const loc = parsed?.location;
+      const latRoute = typeof loc?.latitude === 'number' ? loc.latitude : null;
+      const lngRoute = typeof loc?.longitude === 'number' ? loc.longitude : null;
+
+      const latRt = this.lastLatitude;
+      const lngRt = this.lastLongitude;
+
+      const mInt = m0 == null ? null : Math.max(0, Math.round(m0));
+      const lastLogged = (this.state as any).lastNavLoggedMinutes as number | null | undefined;
+
+      if (mInt == null || lastLogged !== mInt) {
+        (this.state as any).lastNavLoggedMinutes = mInt;
+
+        const fmt = (n: number | null) => (n == null ? 'n/a' : n.toFixed(6));
+        console.log(
+          `[nav] rx: destination=${d ?? 'n/a'} minutes=${m0 ?? 'n/a'} miles=${mi ?? 'n/a'}` +
+            ` latRt=${fmt(latRt)} lngRt=${fmt(lngRt)}` +
+            ` latRoute=${fmt(latRoute)} lngRoute=${fmt(lngRoute)}`
+        );
+      }
+    } catch {
+      // ignore
     }
 
     const destination = typeof parsed?.destination === 'string' ? parsed.destination : null;
     const minutesToArrival = typeof parsed?.minutes_to_arrival === 'number' ? parsed.minutes_to_arrival : null;
     const milesToArrival = typeof parsed?.miles_to_arrival === 'number' ? parsed.miles_to_arrival : null;
     const loc = parsed?.location;
-    const lat = typeof loc?.latitude === 'number' ? loc.latitude : null;
-    const lng = typeof loc?.longitude === 'number' ? loc.longitude : null;
+    const latRoute = typeof loc?.latitude === 'number' ? loc.latitude : null;
+    const lngRoute = typeof loc?.longitude === 'number' ? loc.longitude : null;
+
+    // Use real-time latitude/longitude topics if available.
+    const lat = this.lastLatitude ?? latRoute;
+    const lng = this.lastLongitude ?? lngRoute;
 
     // No active route (or route error) => reset nav state.
     if (!destination || minutesToArrival == null || parsed?.error) {
@@ -409,9 +456,14 @@ export class MqttService {
       if (this.state.lastNavDestination && !this.state.lastNavArrivedNotified) {
         try {
           const messageService = getMessageService();
+          const navOc = config.navAlert.openclaw;
           let text = `✅ 已到达`;
           text += `\n目的地: ${this.state.lastNavDestination}`;
-          await messageService.sendText(text);
+          await messageService.sendText(text, {
+            channel: navOc?.channel,
+            target: navOc?.target,
+            account: navOc?.account,
+          });
           this.state.lastNavArrivedNotified = true;
           console.log(`[nav] sent(arrived): ${this.state.lastNavDestination} (route ended)`);
         } catch (error) {
@@ -443,17 +495,6 @@ export class MqttService {
     }
 
     const now = Date.now();
-
-    // Reset per-route state when destination changes.
-    if (this.state.lastNavDestination !== destination) {
-      if (process.env.MQTT_DEBUG === '1') {
-        console.log(`[nav] destination changed: ${this.state.lastNavDestination || '(none)'} -> ${destination}`);
-      }
-      this.state.lastNavDestination = destination;
-      this.state.lastNavThresholdNotifiedMinutes = [];
-      this.state.lastNavArrivedNotified = false;
-      this.schedulePersist();
-    }
 
     const minutes = Math.max(0, Math.round(minutesToArrival));
     const distKm = milesToArrival != null ? Math.round(milesToArrival * 1.609344 * 10) / 10 : null;
@@ -489,11 +530,52 @@ export class MqttService {
       }
     }
 
+    // Reset per-route state when destination changes.
+    // Also send an immediate "route started" push when a matching destination starts.
+    if (this.state.lastNavDestination !== destination) {
+      const prev = this.state.lastNavDestination;
+      if (process.env.MQTT_DEBUG === '1') {
+        console.log(`[nav] destination changed: ${prev || '(none)'} -> ${destination}`);
+      }
+      this.state.lastNavDestination = destination;
+      this.state.lastNavThresholdNotifiedMinutes = [];
+      this.state.lastNavArrivedNotified = false;
+      this.schedulePersist();
+
+      try {
+        const messageService = getMessageService();
+        const navOc = config.navAlert.openclaw;
+
+        let text = `🧭 已开始导航`;
+        text += `\n目的地: ${destination}`;
+        text += `\n当前位置: ${locStr}`;
+        text += `\n剩余: ${minutes} 分钟`;
+        if (distKm != null) text += ` / ${distKm} km`;
+
+        const eta = new Date(Date.now() + minutes * 60_000);
+        const hh = String(eta.getHours()).padStart(2, '0');
+        const mm = String(eta.getMinutes()).padStart(2, '0');
+        text += `\n预计到达: ${hh}:${mm}`;
+
+        await messageService.sendText(text, {
+          channel: navOc?.channel,
+          target: navOc?.target,
+          account: navOc?.account,
+        });
+        console.log(`[nav] sent(started): ${destination} (${minutes}min${distKm != null ? `/${distKm}km` : ''})`);
+      } catch (error) {
+        console.error('发送导航开始推送失败:', error instanceof Error ? error.message : error);
+      }
+    }
+
+    // minutes/distKm/locStr/regeo already computed above
+
     const thresholds = [...new Set(config.navAlert.thresholdsMinutes)]
       .filter((n) => Number.isFinite(n) && n >= 0)
       .sort((a, b) => b - a);
 
     const messageService = getMessageService();
+    const navOc = config.navAlert.openclaw;
 
     // Threshold-based pushes: 15/10/5 ... (send once when crossing).
     for (const t of thresholds) {
@@ -504,11 +586,20 @@ export class MqttService {
         text += `\n剩余: ${minutes} 分钟`;
         if (distKm != null) text += ` / ${distKm} km`;
 
+        const eta = new Date(Date.now() + minutes * 60_000);
+        const hh = String(eta.getHours()).padStart(2, '0');
+        const mm = String(eta.getMinutes()).padStart(2, '0');
+        text += `\n预计到达: ${hh}:${mm}`;
+
         try {
           if (process.env.MQTT_DEBUG === '1') {
             console.log(`[nav] threshold hit: ${t} (minutes=${minutes}) -> sending`);
           }
-          await messageService.sendText(text);
+          await messageService.sendText(text, {
+            channel: navOc?.channel,
+            target: navOc?.target,
+            account: navOc?.account,
+          });
           this.state.lastNavThresholdNotifiedMinutes.push(t);
           this.schedulePersist();
           console.log(`[nav] sent(threshold=${t}): ${destination} (${minutes}min${distKm != null ? `/${distKm}km` : ''})`);
@@ -526,12 +617,17 @@ export class MqttService {
       let text = `✅ 已到达`;
       text += `\n目的地: ${destination}`;
       text += `\n当前位置: ${locStr}`;
+      text += `\n预计到达: 已到达`;
 
       try {
         if (process.env.MQTT_DEBUG === '1') {
           console.log('[nav] arrived -> sending');
         }
-        await messageService.sendText(text);
+        await messageService.sendText(text, {
+          channel: navOc?.channel,
+          target: navOc?.target,
+          account: navOc?.account,
+        });
         this.state.lastNavArrivedNotified = true;
         this.schedulePersist();
         console.log(`[nav] sent(arrived): ${destination}`);

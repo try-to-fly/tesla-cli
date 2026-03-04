@@ -19,7 +19,9 @@ function proxyEnvPrefix(): string {
 }
 
 export interface MessageOptions {
+  channel?: string;
   target?: string;
+  account?: string;
 }
 
 /**
@@ -27,6 +29,11 @@ export interface MessageOptions {
  */
 function escapeShellArg(arg: string): string {
   return arg.replace(/(["\$`\\])/g, '\\$1');
+}
+
+function quoteShellArg(arg: string): string {
+  // Wrap in double-quotes and escape characters that are special inside them.
+  return `"${escapeShellArg(arg)}"`;
 }
 
 export class MessageService {
@@ -46,10 +53,15 @@ export class MessageService {
    */
   async sendText(message: string, options?: MessageOptions): Promise<void> {
     const target = options?.target || this.defaultTarget;
-    const escapedMessage = escapeShellArg(message);
+    const channel = options?.channel || this.channel;
+    const account = typeof options?.account === 'string' ? options?.account : this.account;
 
-    const accountPart = this.account ? ` --account ${this.account}` : '';
-    const command = `${proxyEnvPrefix()}openclaw message send${accountPart} --channel ${this.channel} --target ${target} --message "${escapedMessage}"`;
+    const accountPart = account ? ` --account ${quoteShellArg(account)}` : '';
+    const command =
+      `${proxyEnvPrefix()}openclaw message send${accountPart}` +
+      ` --channel ${quoteShellArg(channel)}` +
+      ` --target ${quoteShellArg(target)}` +
+      ` --message ${quoteShellArg(message)}`;
 
     try {
       await execAsync(command);
@@ -69,10 +81,14 @@ export class MessageService {
     options?: MessageOptions
   ): Promise<void> {
     const target = options?.target || this.defaultTarget;
-    const escapedMessage = escapeShellArg(message);
 
-    const accountPart = this.account ? ` --account ${this.account}` : '';
-    const command = `${proxyEnvPrefix()}openclaw message send${accountPart} --channel ${this.channel} --target ${target} --message "${escapedMessage}" --media "${mediaPath}"`;
+    const accountPart = this.account ? ` --account ${quoteShellArg(this.account)}` : '';
+    const command =
+      `${proxyEnvPrefix()}openclaw message send${accountPart}` +
+      ` --channel ${quoteShellArg(this.channel)}` +
+      ` --target ${quoteShellArg(target)}` +
+      ` --message ${quoteShellArg(message)}` +
+      ` --media ${quoteShellArg(mediaPath)}`;
 
     try {
       await execAsync(command);
