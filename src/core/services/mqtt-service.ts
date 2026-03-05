@@ -15,6 +15,7 @@ import { getGrafanaClient } from '../index.js';
 import { recommendAroundAndFormat, distanceMeters } from '../utils/amap-recommend.js';
 import { amapReverseGeocode } from '../utils/amap-regeo.js';
 import { config } from '../../config/index.js';
+import { loadNavConfigRealtime } from './nav-config.js';
 
 const execAsync = promisify(exec);
 
@@ -49,6 +50,7 @@ export class MqttService {
     lastParkRecommendTime: 0,
 
     lastNavDestination: null,
+    lastNavMinutes: null,
     lastNavThresholdNotifiedMinutes: [],
     lastNavArrivedNotified: false,
   };
@@ -385,8 +387,9 @@ export class MqttService {
   }
 
   private shouldNavNotifyForDestination(destination: string): boolean {
-    const keywords = config.navAlert.destinationKeywords;
-    if (!config.navAlert.enabled) return false;
+    const navCfg = loadNavConfigRealtime();
+    const keywords = navCfg.destinationKeywords;
+    if (!navCfg.enabled) return false;
     if (!keywords.length) return false;
 
     // Strict match only (after trim). No fuzzy/substring matching.
@@ -456,7 +459,7 @@ export class MqttService {
       if (this.state.lastNavDestination && !this.state.lastNavArrivedNotified) {
         try {
           const messageService = getMessageService();
-          const navOc = config.navAlert.openclaw;
+          const navOc = loadNavConfigRealtime().openclaw;
           let text = `✅ 已到达`;
           text += `\n目的地: ${this.state.lastNavDestination}`;
           await messageService.sendText(text, {
@@ -471,8 +474,13 @@ export class MqttService {
         }
       }
 
-      if (this.state.lastNavDestination || this.state.lastNavThresholdNotifiedMinutes.length) {
+      if (
+        this.state.lastNavDestination ||
+        this.state.lastNavThresholdNotifiedMinutes.length ||
+        this.state.lastNavMinutes != null
+      ) {
         this.state.lastNavDestination = null;
+        this.state.lastNavMinutes = null;
         this.state.lastNavThresholdNotifiedMinutes = [];
         this.state.lastNavArrivedNotified = false;
         this.schedulePersist();
@@ -485,8 +493,13 @@ export class MqttService {
         console.log(`[nav] destination not matched -> reset (destination=${destination})`);
       }
       // Destination does not match; reset so next time matching route starts, it can notify immediately.
-      if (this.state.lastNavDestination || this.state.lastNavThresholdNotifiedMinutes.length) {
+      if (
+        this.state.lastNavDestination ||
+        this.state.lastNavThresholdNotifiedMinutes.length ||
+        this.state.lastNavMinutes != null
+      ) {
         this.state.lastNavDestination = null;
+        this.state.lastNavMinutes = null;
         this.state.lastNavThresholdNotifiedMinutes = [];
         this.state.lastNavArrivedNotified = false;
         this.schedulePersist();
@@ -538,13 +551,14 @@ export class MqttService {
         console.log(`[nav] destination changed: ${prev || '(none)'} -> ${destination}`);
       }
       this.state.lastNavDestination = destination;
+      this.state.lastNavMinutes = minutes;
       this.state.lastNavThresholdNotifiedMinutes = [];
       this.state.lastNavArrivedNotified = false;
       this.schedulePersist();
 
       try {
         const messageService = getMessageService();
-        const navOc = config.navAlert.openclaw;
+        const navOc = loadNavConfigRealtime().openclaw;
 
         let text = `🧭 已开始导航`;
         text += `\n目的地: ${destination}`;
@@ -570,16 +584,25 @@ export class MqttService {
 
     // minutes/distKm/locStr/regeo already computed above
 
-    const thresholds = [...new Set(config.navAlert.thresholdsMinutes)]
+    const navCfg = loadNavConfigRealtime();
+
+    const thresholds = [...new Set(navCfg.thresholdsMinutes)]
       .filter((n) => Number.isFinite(n) && n >= 0)
       .sort((a, b) => b - a);
 
     const messageService = getMessageService();
-    const navOc = config.navAlert.openclaw;
+    const navOc = navCfg.openclaw;
 
     // Threshold-based pushes: 15/10/5 ... (send once when crossing).
+    const lastMinutes = this.state.lastNavMinutes;
     for (const t of thresholds) {
-      if (minutes <= t && !this.state.lastNavThresholdNotifiedMinutes.includes(t)) {
+      const crossed =
+        typeof lastMinutes === 'number' &&
+        Number.isFinite(lastMinutes) &&
+        lastMinutes > t &&
+        minutes <= t;
+
+      if (crossed && !this.state.lastNavThresholdNotifiedMinutes.includes(t)) {
         let text = `🧭 导航提醒`;
         text += `\n目的地: ${destination}`;
         text += `\n当前位置: ${locStr}`;
@@ -611,6 +634,9 @@ export class MqttService {
         break;
       }
     }
+
+    // Update last minutes for threshold-crossing detection.
+    this.state.lastNavMinutes = minutes;
 
     // Arrival push: when minutes reaches 0.
     if (minutes <= 0 && !this.state.lastNavArrivedNotified) {
@@ -911,6 +937,9 @@ export class MqttService {
       this.state.lastParkRecommendTime = persisted.lastParkRecommendTime || 0;
 
       this.state.lastNavDestination = persisted.lastNavDestination || null;
+      this.state.lastNavMinutes = typeof persisted.lastNavMinutes === 'number' && Number.isFinite(persisted.lastNavMinutes)
+        ? persisted.lastNavMinutes
+        : null;
       this.state.lastNavThresholdNotifiedMinutes = Array.isArray(persisted.lastNavThresholdNotifiedMinutes)
         ? persisted.lastNavThresholdNotifiedMinutes.filter((n) => typeof n === 'number' && Number.isFinite(n))
         : [];
@@ -973,6 +1002,7 @@ export class MqttService {
       lastParkRecommendTime: this.state.lastParkRecommendTime,
 
       lastNavDestination: this.state.lastNavDestination,
+      lastNavMinutes: this.state.lastNavMinutes,
       lastNavThresholdNotifiedMinutes: this.state.lastNavThresholdNotifiedMinutes,
       lastNavArrivedNotified: this.state.lastNavArrivedNotified,
 

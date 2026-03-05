@@ -39,6 +39,8 @@ export interface StateTracker {
 
   // Navigation push (active_route)
   lastNavDestination: string | null;
+  // Last rounded minutes_to_arrival seen (for threshold-crossing detection).
+  lastNavMinutes: number | null;
   // Threshold-based pushes for the current destination.
   lastNavThresholdNotifiedMinutes: number[];
   // Arrival message sent for the current destination.
@@ -62,6 +64,7 @@ export interface PersistedMqttState {
 
   // Navigation push (active_route)
   lastNavDestination?: string | null;
+  lastNavMinutes?: number | null;
   lastNavThresholdNotifiedMinutes?: number[];
   lastNavArrivedNotified?: boolean;
 

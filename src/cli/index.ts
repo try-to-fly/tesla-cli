@@ -22,6 +22,7 @@ import { tpmsCommand } from './commands/tpms.js';
 import { whereCommand } from './commands/where.js';
 import { notifyCommand } from './commands/notify.js';
 import { configCommand } from './commands/config.js';
+import { navCommand } from './commands/nav.js';
 
 const program = new Command();
 
@@ -167,5 +168,6 @@ program.addCommand(mqttCommand);
 program.addCommand(queryCommandDef);
 program.addCommand(notifyCommand);
 program.addCommand(configCommand);
+program.addCommand(navCommand);
 
 export { program };
