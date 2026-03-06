@@ -20,6 +20,7 @@
 - 想用 CLI 查数据：[`docs/cli.md`](./docs/cli.md)
 - 想生成截图或发图：[`docs/screenshots.md`](./docs/screenshots.md)
 - 想跑 MQTT 实时通知：[`docs/mqtt-service.md`](./docs/mqtt-service.md)
+- 想从 OpenClaw 视角使用 Tesla：[`docs/openclaw/README.md`](./docs/openclaw/README.md)
 - 想接 OpenClaw 插件：[`docs/openclaw-plugin.md`](./docs/openclaw-plugin.md)
 - 想看完整查询协议 / 字段语义：[`docs/API-REFERENCE.md`](./docs/API-REFERENCE.md)
 - 改完代码想回归：[`docs/REGRESSION-CHECKLIST.md`](./docs/REGRESSION-CHECKLIST.md)
