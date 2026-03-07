@@ -58,10 +58,27 @@ export const config = (() => {
     navAlert: {
       enabled: typeof navAlert.enabled === 'boolean' ? navAlert.enabled : false,
       destinationKeywords: (() => {
-        const v: unknown = (navAlert as any).destinationKeywords;
-        if (Array.isArray(v)) return v.filter((x) => typeof x === 'string' && x.trim());
-        if (typeof v === 'string' && v.trim()) return [v.trim()];
-        return [];
+        const out: string[] = [];
+        const pushValue = (input: unknown): void => {
+          if (Array.isArray(input)) {
+            for (const item of input) pushValue(item);
+            return;
+          }
+          if (typeof input !== 'string') return;
+          const trimmed = input.trim();
+          if (!trimmed) return;
+          if ((trimmed.startsWith('[') && trimmed.endsWith(']')) || (trimmed.startsWith('"[') && trimmed.endsWith(']"'))) {
+            try {
+              pushValue(JSON.parse(trimmed));
+              return;
+            } catch {
+              // ignore and keep original string
+            }
+          }
+          out.push(trimmed);
+        };
+        pushValue((navAlert as any).destinationKeywords);
+        return Array.from(new Set(out));
       })(),
       thresholdsMinutes: Array.isArray(navAlert.thresholdsMinutes)
         ? navAlert.thresholdsMinutes
