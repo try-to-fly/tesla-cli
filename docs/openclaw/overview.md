@@ -1,6 +1,6 @@
 # OpenClaw Usage Overview
 
-这份文档先回答最重要的问题：**OpenClaw 到底可以怎么使用这个 Tesla 项目。**
+这份文档概览 OpenClaw 如何使用 Tesla CLI 的查询、截图与发送能力。
 
 ## 能力分层
 
@@ -106,21 +106,16 @@ tesla screenshot weekly 2026-03-06 -c 1 --send
 - `/tesla` command
 - `tesla_query` tool
 
-### 3. 本地工具约定
+### 3. 本地工具说明
 
-工作区 `TOOLS.md` 里记录的是“本机可用姿势”和局部经验，比如：
-- 命令名
-- 常用示例
-- 本地发送或媒体处理注意事项
-
-它不应该承担完整文档职责。
+工作区 `TOOLS.md` 记录本机可用命令、常用示例和本地环境注意事项。
 
 ## 推荐的信息流
 
 ```text
 用户自然语言
   ↓
-Skill / prompt 判断：查数据 or 出图 or 直接发送
+判断：查数据 / 出图 / 直接发送
   ↓
 构造 TeslaQuery
   ↓

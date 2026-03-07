@@ -1,10 +1,10 @@
 # OpenClaw Plugin
 
-这份文档只讲本仓库如何作为 OpenClaw 插件接入。
+这份文档说明本仓库如何作为 OpenClaw 插件接入。
 
-## 提供了什么
+## 提供的能力
 
-项目暴露 2 个主要入口：
+项目暴露两个主要入口：
 - `/tesla` command
 - `tesla_query` tool
 
@@ -49,7 +49,7 @@
 - `/tesla 充电记录`
 - `/tesla 电池`
 
-当前实现是“轻量关键词映射”，不是完整自然语言理解。
+当前实现是轻量关键词映射，不是完整自然语言理解。
 
 ### 2. 直接传 JSON 协议
 
@@ -71,25 +71,22 @@ tool 输入格式：
 
 要点：
 - `query` 是字符串，不是对象
-- 内部会先做 JSON.parse
+- 内部会先做 `JSON.parse`
 - 只接受 `version: "1.0"`
 - `type` 必须是受支持的查询类型
 
 ## 查询执行链路
 
-插件层本身比较薄：
-- command / tool 负责解析输入
-- 默认 carId 补全
-- 最终都走 `executeQuery()`
+插件层本身比较薄，主要负责：
+- 解析 command / tool 输入
+- 补全默认 `carId`
+- 最终调用 `executeQuery()`
 
-这设计是对的：
-- 外部接入面薄
-- 核心逻辑不重复
-- CLI / 插件 / 其他入口更容易保持一致
+这样可以让 CLI、插件和其他入口尽量保持一致。
 
-## 适合继续改进的方向
+## 后续改进方向
 
-- `/tesla` 的关键词映射可以再扩展，但别把它做成一坨 if/else
-- 更好的做法是把“自然语言 -> QueryType”抽成独立模块
-- tool / command 的错误信息可以更统一
-- 插件配置和 CLI configstore 之间的边界，最好在文档里一直保持清楚
+- 扩展 `/tesla` 的关键词映射
+- 把“自然语言 -> QueryType”进一步抽成独立模块
+- 统一 tool / command 的错误信息
+- 持续明确插件配置与 CLI configstore 的边界

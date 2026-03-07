@@ -1,6 +1,22 @@
 import { Command } from 'commander';
 import { getConfigStore, loadStoredConfig, getStoredValue, type StoredConfig } from '../../config/store.js';
 
+function parseJsonValue(value: string): unknown {
+  return JSON.parse(value);
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string');
+}
+
+function isNumberArray(value: unknown): value is number[] {
+  return Array.isArray(value) && value.every((item) => typeof item === 'number' && Number.isFinite(item));
+}
+
+function isBoolean(value: unknown): value is boolean {
+  return typeof value === 'boolean';
+}
+
 function maskSecret(v: string): string {
   if (v.length <= 8) return '***';
   return `${v.slice(0, 3)}***${v.slice(-3)}`;
@@ -65,6 +81,10 @@ configCommand
 configCommand
   .command('set')
   .description('Set a config key')
+  .addHelpText(
+    'after',
+    `\nExamples:\n  tesla config set openclaw.channel discord\n  tesla config set mqtt.port 1883\n  tesla config set navAlert.enabled true\n  tesla config set navAlert.thresholdsMinutes "[20,15,10,5]"\n  tesla config set navAlert.destinationKeywords "[\\"公司\\",\\"聚橙路文一西路口\\"]"\n\nNotes:\n  - navAlert.enabled must be a JSON boolean: true / false\n  - navAlert.thresholdsMinutes must be a JSON number[]\n  - navAlert.destinationKeywords must be a JSON string[]\n  - Invalid formats will fail fast; no compatibility coercion is applied.\n`
+  )
   .argument('<key>', 'Dot-path key, e.g. openclaw.channel')
   .argument('<value>', 'Value')
   .action((key: string, value: string) => {
@@ -78,6 +98,33 @@ configCommand
       return;
     }
 
+    if (key === 'navAlert.enabled') {
+      const parsed = parseJsonValue(value);
+      if (!isBoolean(parsed)) throw new Error(`Expected boolean for ${key}`);
+      store.set(key, parsed);
+      return;
+    }
+
+    if (key === 'navAlert.thresholdsMinutes') {
+      const parsed = parseJsonValue(value);
+      if (!isNumberArray(parsed)) throw new Error(`Expected JSON number[] for ${key}`);
+      store.set(
+        key,
+        parsed.map((n) => Math.max(0, Math.round(n)))
+      );
+      return;
+    }
+
+    if (key === 'navAlert.destinationKeywords') {
+      const parsed = parseJsonValue(value);
+      if (!isStringArray(parsed)) throw new Error(`Expected JSON string[] for ${key}`);
+      store.set(
+        key,
+        parsed.map((s) => s.trim()).filter(Boolean)
+      );
+      return;
+    }
+
     // Trim common string fields.
     if (
       key === 'grafana.url' ||
@@ -88,7 +135,10 @@ configCommand
       key === 'openclaw.target' ||
       key === 'openclaw.account' ||
       key === 'mqtt.host' ||
-      key === 'mqtt.topicPrefix'
+      key === 'mqtt.topicPrefix' ||
+      key === 'navAlert.openclawChannel' ||
+      key === 'navAlert.openclawTarget' ||
+      key === 'navAlert.openclawAccount'
     ) {
       store.set(key, String(value).trim());
       return;

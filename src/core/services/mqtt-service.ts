@@ -569,11 +569,9 @@ export class MqttService {
         const messageService = getMessageService();
         const navOc = loadNavConfigRealtime().openclaw;
 
-        let text = `🧭 已开始导航`;
+        let text = `剩余: ${minutes} 分钟${distKm != null ? ` / ${distKm} km` : ''}`;
         text += `\n目的地: ${destination}`;
         text += `\n当前位置: ${locStr}`;
-        text += `\n剩余: ${minutes} 分钟`;
-        if (distKm != null) text += ` / ${distKm} km`;
 
         const eta = new Date(Date.now() + minutes * 60_000);
         const hh = String(eta.getHours()).padStart(2, '0');
@@ -638,11 +636,9 @@ export class MqttService {
         this.state.lastNavStartedNotified;
 
       if ((crossed || afterRestartCatchup) && !this.state.lastNavThresholdNotifiedMinutes.includes(t)) {
-        let text = `🧭 导航提醒`;
+        let text = `剩余: ${minutes} 分钟${distKm != null ? ` / ${distKm} km` : ''}`;
         text += `\n目的地: ${destination}`;
         text += `\n当前位置: ${locStr}`;
-        text += `\n剩余: ${minutes} 分钟`;
-        if (distKm != null) text += ` / ${distKm} km`;
 
         const eta = new Date(Date.now() + minutes * 60_000);
         const hh = String(eta.getHours()).padStart(2, '0');

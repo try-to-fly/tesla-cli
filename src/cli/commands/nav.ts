@@ -3,10 +3,18 @@ import { getConfigStore } from '../../config/store.js';
 
 function readDestinations(): string[] {
   const store = getConfigStore();
-  const v = store.get('navAlert.destinationKeywords') as any;
-  if (Array.isArray(v)) return v.filter((x) => typeof x === 'string' && x.trim()).map((x) => x.trim());
-  if (typeof v === 'string' && v.trim()) return [v.trim()];
-  return [];
+  const v = store.get('navAlert.destinationKeywords') as unknown;
+  if (v == null) return [];
+  if (!Array.isArray(v)) {
+    throw new Error('Invalid config: navAlert.destinationKeywords must be a string[]');
+  }
+
+  const invalid = v.find((x) => typeof x !== 'string' || !x.trim());
+  if (invalid !== undefined) {
+    throw new Error('Invalid config: navAlert.destinationKeywords must be a non-empty string[]');
+  }
+
+  return Array.from(new Set(v.map((x) => x.trim())));
 }
 
 function writeDestinations(list: string[]): void {

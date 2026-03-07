@@ -12,9 +12,15 @@ export type NavConfig = {
 };
 
 function normalizeStringArray(v: unknown): string[] {
-  if (Array.isArray(v)) return v.filter((x) => typeof x === 'string' && x.trim()).map((x) => x.trim());
-  if (typeof v === 'string' && v.trim()) return [v.trim()];
-  return [];
+  if (v == null) return [];
+  if (!Array.isArray(v)) {
+    throw new Error('Invalid config: navAlert.destinationKeywords must be a string[]');
+  }
+  const invalid = v.find((x) => typeof x !== 'string' || !x.trim());
+  if (invalid !== undefined) {
+    throw new Error('Invalid config: navAlert.destinationKeywords must be a non-empty string[]');
+  }
+  return Array.from(new Set(v.map((x) => x.trim())));
 }
 
 function normalizeThresholds(v: unknown): number[] {
@@ -40,10 +46,6 @@ export function loadNavConfigRealtime(): NavConfig {
   const destRaw = navAlert.destinationKeywords;
   const destinationKeywords = normalizeStringArray(destRaw);
 
-  // One-time migration: string -> string[]
-  if (typeof destRaw === 'string' && destRaw.trim()) {
-    store.set('navAlert.destinationKeywords', [destRaw.trim()]);
-  }
 
   const thresholdsMinutes = normalizeThresholds(navAlert.thresholdsMinutes);
 

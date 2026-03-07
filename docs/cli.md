@@ -1,6 +1,6 @@
 # CLI Guide
 
-这份文档聚焦 `tesla` 命令怎么用。
+这份文档说明 `tesla` 命令的主要用法。
 
 ## 命令分组
 
@@ -34,7 +34,7 @@
 - `tesla detail drive <record-id>`
 - `tesla detail charge <record-id>`
 
-### 工具型命令
+### 工具类命令
 
 - `tesla query <json>`
 - `tesla screenshot ...`
@@ -43,51 +43,51 @@
 - `tesla notify ...`
 - `tesla nav ...`
 
-## 常用例子
+## 常用示例
 
-### 看车辆列表
+### 查看车辆列表
 
 ```bash
 tesla cars -o json
 ```
 
-### 看最近 5 条行程
+### 查看最近 5 条行程
 
 ```bash
 tesla drives 1 -l 5
 ```
 
-### 看最近 30 天充电记录
+### 查看最近 30 天充电记录
 
 ```bash
 tesla charges 1 --from now-30d --to now
 ```
 
-### 看电池健康
+### 查看电池健康
 
 ```bash
 tesla battery 1 -o json
 ```
 
-### 看当前位置
+### 查看当前位置
 
 ```bash
 tesla where 1 -o json
 ```
 
-带高德逆地理：
+带高德逆地理信息：
 
 ```bash
 tesla where 1 --amap
 ```
 
-### 用统一 JSON 协议查询
+### 使用统一 JSON 协议查询
 
 ```bash
 tesla query '{"version":"1.0","type":"drives","carId":1,"timeRange":{"semantic":"last_7_days"}}'
 ```
 
-这是最稳定的程序化入口；CLI 子命令和 OpenClaw tool 本质上都能收敛到这套协议。
+这是最稳定的程序化入口，CLI 子命令和 OpenClaw 查询能力都可以收敛到这套协议。
 
 ## 输出格式
 
@@ -95,7 +95,7 @@ tesla query '{"version":"1.0","type":"drives","carId":1,"timeRange":{"semantic":
 - `-o table`
 - `-o json`
 
-默认通常是 `table`，脚本集成建议直接用 `json`。
+默认通常是 `table`，如果要做脚本集成，建议直接使用 `json`。
 
 ## 时间范围
 
@@ -109,15 +109,15 @@ tesla query '{"version":"1.0","type":"drives","carId":1,"timeRange":{"semantic":
 - `now-30d`
 - `now-1y`
 
-## 建议的阅读顺序
+## 代码阅读建议
 
-如果你要改 CLI：
+如果需要修改 CLI，推荐按这个顺序看：
 1. `src/cli/index.ts`
 2. `src/cli/commands/*`
 3. `src/core/query-executor.ts`
-4. 对应 `src/core/services/*`
+4. 对应的 `src/core/services/*`
 
 ## 深入参考
 
-字段定义、查询类型、协议细节：
+字段定义、查询类型和协议细节见：
 - [`./API-REFERENCE.md`](./API-REFERENCE.md)

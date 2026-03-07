@@ -1,10 +1,10 @@
 # MQTT Service
 
-这份文档讲实时事件监听服务，而不是通用 CLI 查询。
+这份文档说明实时事件监听服务，而不是通用 CLI 查询。
 
-## 它做什么
+## 作用
 
-项目会订阅 TeslaMate 的 MQTT 主题，然后在关键状态变化时触发动作，比如：
+项目会订阅 TeslaMate 的 MQTT 主题，并在关键状态变化时触发动作，例如：
 - 行程结束后截图 / 推送
 - 充电开始时记录起点
 - 充电结束时计算增益并推送
@@ -34,19 +34,19 @@ tesla mqtt listen --host 127.0.0.1 --port 1883 --car-id 1
 - `mqtt.port`
 - `mqtt.carId`
 - `mqtt.topicPrefix`
-- Grafana 相关配置（因为很多事件最终会查数 / 出图）
-- OpenClaw 发送目标配置（如果你启用了真实推送）
+- Grafana 相关配置（因为很多事件最终需要查询或出图）
+- OpenClaw 发送目标配置（如果启用了真实推送）
 
-## 事件模型（高层）
+## 事件模型
 
 ### 软件更新
 
 触发条件：
 - `update_available=true`
-- 且有 `update_version`
+- 且存在 `update_version`
 
 动作：
-- 推送更新通知
+- 发送更新通知
 - 带节流，避免频繁重复推送
 
 ### 行程结束
@@ -57,7 +57,7 @@ tesla mqtt listen --host 127.0.0.1 --port 1883 --car-id 1
 动作：
 - 生成行程截图
 - 可附带周边推荐 / 停车点上下文
-- 记录停车起点，为后续待机损耗做基线
+- 记录停车起点，为后续待机损耗计算提供基线
 
 ### 充电开始 / 结束
 
@@ -70,7 +70,7 @@ tesla mqtt listen --host 127.0.0.1 --port 1883 --car-id 1
 
 ## 调试与模拟
 
-项目自带测试子命令 / 脚本。
+项目自带测试子命令和脚本。
 
 ### 快速模拟完整周期
 
@@ -96,9 +96,11 @@ tesla mqtt listen --host 127.0.0.1 --port 1883 --car-id 1
 ./scripts/mqtt-test.sh update
 ```
 
-### 用 CLI test 能力（如果你在调命令层）
+### 查看命令帮助
 
-见：`tesla mqtt --help`
+```bash
+tesla mqtt --help
+```
 
 ## 生产运行建议
 
@@ -110,14 +112,14 @@ pm2 status tesla-mqtt
 pm2 logs tesla-mqtt --lines 80 --nostream
 ```
 
-## 排障优先级
+## 排障顺序
 
-如果 MQTT 不工作，按这个顺序查：
-1. 进程有没有起来
-2. MQTT broker 能不能连
-3. topicPrefix / carId 对不对
+如果 MQTT 不工作，建议按这个顺序检查：
+1. 进程是否已启动
+2. MQTT broker 是否可连接
+3. `topicPrefix` / `carId` 是否正确
 4. Grafana 查询是否正常
 5. 发送链路是否正常
-6. `dist/` 是否是最新构建
+6. `dist/` 是否为最新构建产物
 
-完整排障清单：[`./REGRESSION-CHECKLIST.md`](./REGRESSION-CHECKLIST.md)
+完整排障清单见：[`./REGRESSION-CHECKLIST.md`](./REGRESSION-CHECKLIST.md)
