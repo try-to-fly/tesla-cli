@@ -67,6 +67,43 @@ Tesla CLI 是一个基于 TeslaMate / Grafana 的 Tesla 数据查询、可视化
 
 详见：[`docs/openclaw/README.md`](./docs/openclaw/README.md)
 
+## npm 全局安装
+
+```bash
+npm install -g tesla-cli2
+tesla --version
+tesla config init
+```
+
+如果你要跑 MQTT 常驻服务：
+
+```bash
+npm install -g pm2
+tesla service install
+tesla service status
+```
+
+## 自动发布到 npm
+
+仓库已包含：
+- `.github/workflows/ci.yml`：push / PR 时执行测试和构建
+- `.github/workflows/release.yml`：push `v*` tag 时自动发布 npm
+
+使用方式：
+
+```bash
+# 1. 确认 package.json version 已更新
+git add .
+git commit -m "chore: release v1.0.0"
+git tag v1.0.0
+git push origin main --follow-tags
+```
+
+在 GitHub 仓库 Settings → Secrets and variables → Actions 中添加：
+- `NPM_TOKEN`
+
+`NPM_TOKEN` 来自 npm 网站的 Access Token，建议使用 publish 权限最小化配置。
+
 ## 快速开始
 
 ### 本地 CLI

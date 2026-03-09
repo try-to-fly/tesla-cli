@@ -1,5 +1,5 @@
 {
-  "name": "tesla-cli",
+  "name": "tesla-cli2",
   "type": "module",
   "bin": {
     "tesla": "./dist/index.js"
@@ -13,7 +13,8 @@
     "start": "node dist/index.js",
     "collect": "tsx scripts/collect-data.ts",
     "test": "vitest",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "prepublishOnly": "npm run test:run && npm run build"
   },
   "dependencies": {
     "@amap/amap-jsapi-loader": "^1.0.1",
@@ -45,5 +46,34 @@
     "typescript": "^5.8.3",
     "vite": "^6.1.0",
     "vitest": "^4.0.18"
+  },
+  "version": "1.0.0",
+  "description": "Tesla CLI for TeslaMate / Grafana data query, screenshots, and MQTT service management",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/weixiao0297/tesla-service.git"
+  },
+  "homepage": "https://github.com/weixiao0297/tesla-service#readme",
+  "bugs": {
+    "url": "https://github.com/weixiao0297/tesla-service/issues"
+  },
+  "keywords": [
+    "tesla",
+    "teslamate",
+    "grafana",
+    "mqtt",
+    "cli"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "docs"
+  ],
+  "publishConfig": {
+    "access": "public"
   }
 }

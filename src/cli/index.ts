@@ -23,13 +23,18 @@ import { whereCommand } from './commands/where.js';
 import { notifyCommand } from './commands/notify.js';
 import { configCommand } from './commands/config.js';
 import { navCommand } from './commands/nav.js';
+import { serviceCommand } from './commands/service.js';
+
+import { readPackageMeta } from './utils/pkg.js';
 
 const program = new Command();
 
+const pkg = readPackageMeta();
+
 program
   .name('tesla')
-  .description('Tesla CLI')
-  .version('1.0.0');
+  .description(pkg.description || 'Tesla CLI')
+  .version(pkg.version || '0.0.0');
 
 program
   .command('cars')
@@ -169,5 +174,6 @@ program.addCommand(queryCommandDef);
 program.addCommand(notifyCommand);
 program.addCommand(configCommand);
 program.addCommand(navCommand);
+program.addCommand(serviceCommand);
 
 export { program };
