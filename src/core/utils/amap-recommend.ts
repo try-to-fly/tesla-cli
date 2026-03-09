@@ -12,6 +12,17 @@ type AmapV5Poi = {
   distance?: string; // meters as string
 };
 
+function sanitizeInlineText(text: string): string {
+  return text
+    .replace(/[\r\n]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function escapeMarkdownLinkText(text: string): string {
+  return sanitizeInlineText(text).replace(/([\\\[\]\(\)])/g, '\\$1');
+}
+
 function amapPoiLink(p: { name: string; location: string }): string {
   // Use AMap H5 URL so Telegram will always render it as a clickable link.
   // Tested: https://uri.amap.com/marker?position=lng,lat&name=xxx redirects to ditu.amap.com.
@@ -22,7 +33,7 @@ function amapPoiLink(p: { name: string; location: string }): string {
 
   const u = new URL('https://uri.amap.com/marker');
   u.searchParams.set('position', `${toFixed6(lng)},${toFixed6(lat)}`);
-  u.searchParams.set('name', p.name);
+  u.searchParams.set('name', sanitizeInlineText(p.name));
   return u.toString();
 }
 
@@ -222,8 +233,9 @@ export async function recommendAroundAndFormat(params: {
     lines.push(`${c.emoji} ${c.title}:`);
     for (const p of pois) {
       const dist = fmtDistanceMeters(p.distance);
+      const safeName = escapeMarkdownLinkText(p.name);
       const link = amapPoiLink({ name: p.name, location: p.location });
-      lines.push(link ? `- [${p.name} (${dist})](${link})` : `- ${p.name} (${dist})`);
+      lines.push(link ? `- [${safeName} (${dist})](${link})` : `- ${sanitizeInlineText(p.name)} (${dist})`);
     }
   }
 

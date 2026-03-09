@@ -57,6 +57,7 @@ interface TestOptions {
   range?: string;
   battery?: string;
   version?: string;
+  resetRecommend?: boolean;
 
   // nav simulation
   destination?: string;
@@ -129,12 +130,17 @@ async function resetRecommend(options: TestOptions): Promise<void> {
 }
 
 async function driveCycle(options: TestOptions): Promise<void> {
+  const carId = options.carId ? parseInt(options.carId, 10) : config.mqtt.carId;
+  if (options.resetRecommend) {
+    await clearParkRecommendCenter(carId);
+  }
+
   const ctx = await getTestContext(options);
   const range = options.range || '350.5';
   const battery = options.battery || '80';
 
   try {
-    console.log('=== 模拟行程周期 ===');
+    console.log(`=== 模拟行程周期${options.resetRecommend ? '（已跳过周边推荐去重）' : ''} ===`);
     await publish(ctx, 'rated_battery_range_km', range);
     await publish(ctx, 'usable_battery_level', battery);
     await publish(ctx, 'state', 'driving');
@@ -347,6 +353,7 @@ testSubcommand
   .option('--delay <ms>', '步骤间延迟毫秒数', '2000')
   .option('--range <km>', '初始续航 km')
   .option('--battery <percent>', '初始电量 %')
+  .option('--reset-recommend', '模拟前清除周边推荐去重状态，便于重复测试')
   .action((opts) => driveCycle(opts));
 
 testSubcommand
