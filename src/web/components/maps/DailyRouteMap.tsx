@@ -18,36 +18,35 @@ export function DailyRouteMap({ allPositions, theme = 'tesla' }: DailyRouteMapPr
 
       const allOverlays: any[] = [];
 
-      // 为每条轨迹绘制路线
+      // 为每条轨迹绘制路线。
+      // 之前是“每两个点画一小段 polyline”，多段行程 + 大量点时 overlay 数量会爆炸，
+      // AMap 在截图场景里容易出现前半段轨迹没完整渲染出来的问题。
+      // 改成“每条行程一条 polyline”，优先保证整条轨迹稳定显示。
       validPositions.forEach((positions, routeIndex) => {
         if (positions.length < 2) return;
 
-        // 为每段轨迹创建不同颜色的 Polyline（根据速度和轨迹索引变色）
-        for (let i = 0; i < positions.length - 1; i++) {
-          const p1 = positions[i];
-          const p2 = positions[i + 1];
+        const path = positions.map((p) => new AMap.LngLat(p.longitude, p.latitude));
 
-          // 计算两点的平均速度，使用轨迹索引确定色系
-          const avgSpeed = (p1.speed + p2.speed) / 2;
-          const color = getSpeedColorByRoute(avgSpeed, routeIndex, theme);
+        const speeds = positions
+          .map((p) => Number(p.speed))
+          .filter((v) => Number.isFinite(v));
+        const avgSpeed = speeds.length > 0
+          ? speeds.reduce((sum, v) => sum + v, 0) / speeds.length
+          : 0;
+        const color = getSpeedColorByRoute(avgSpeed, routeIndex, theme);
 
-          const segmentPath = [
-            new AMap.LngLat(p1.longitude, p1.latitude),
-            new AMap.LngLat(p2.longitude, p2.latitude),
-          ];
+        const polyline = new AMap.Polyline({
+          path,
+          strokeColor: color,
+          strokeWeight: 4,
+          strokeOpacity: 0.9,
+          lineJoin: 'round',
+          lineCap: 'round',
+          showDir: false,
+        });
 
-          const polyline = new AMap.Polyline({
-            path: segmentPath,
-            strokeColor: color,
-            strokeWeight: 4,
-            strokeOpacity: 0.85,
-            lineJoin: 'round',
-            lineCap: 'round',
-          });
-
-          allOverlays.push(polyline);
-          map.add(polyline);
-        }
+        allOverlays.push(polyline);
+        map.add(polyline);
       });
 
       // Daily 是多条行程轨迹叠加：起点/终点应取“全量 positions 的最早/最晚时间点”。

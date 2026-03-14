@@ -267,7 +267,9 @@ async function takeScreenshot(
       // 地图在 fitView/瓦片加载过程中截图容易出现“轨迹未居中”的瞬间。
       // 多等一会儿，尽量等到 complete 事件后再截。
       await page.waitForSelector('[data-map-centered="true"]', { timeout: 8000 });
-      await new Promise(resolve => setTimeout(resolve, 1200));
+      // 多条轨迹的 daily 图层、瓦片和 fitView 后的重绘有时会比 complete 更晚一点。
+      // 这里保守一些，多等几秒，减少“轨迹还没完全连起来就截图”的概率。
+      await new Promise(resolve => setTimeout(resolve, 3500));
       console.log('地图视野稳定，准备截图');
     } catch {
       console.log('页面无地图或地图加载超时，继续执行');
